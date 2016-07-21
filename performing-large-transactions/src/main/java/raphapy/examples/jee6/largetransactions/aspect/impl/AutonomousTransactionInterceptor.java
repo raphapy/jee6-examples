@@ -57,14 +57,25 @@ public class AutonomousTransactionInterceptor {
 			result = context.proceed();
 			tx.commit();
 
-		} catch (Throwable e) {
+		} catch (RuntimeException re) {
 
 			// rollback solo si existe una transaccion
 			if (Status.STATUS_NO_TRANSACTION != tx.getStatus()) {
 				tx.rollback();
 			}
-			throw e;
+			throw re;
 
+		} catch (Exception e) {
+			ApplicationException aeAnnotation = 
+									e.getClass()
+									.getAnnotation(ApplicationException.class);
+			
+			// rollback solo si existe una transaccion y la anotacion indica que la excepción debe 
+			if (Status.STATUS_NO_TRANSACTION != tx.getStatus() && 
+					aeAnnotation!=null && aeAnnotation.rollback()) {
+				tx.rollback();
+			}
+			throw e;
 		}
 
 		return result;
